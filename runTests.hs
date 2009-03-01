@@ -27,7 +27,8 @@ interpreterTests = [
       == [SList [Symbol "a", Symbol "b"]],
     (work $ step $ minSt {work=[Eval (SList [Symbol "cons", Symbol "a", Symbol "b"])]})
       == [Eval (Symbol "cons"), Eval (Symbol "a"), Eval (Symbol "b"), Apply [Symbol "cons", Symbol "a", Symbol "b"]],
-    runP "(car car)" == Symbol "prim"
+    runP "(car car)" == Symbol "prim",
+    runP "(quote (car car))" == (SList $ map Symbol ["car", "car"])
    ]
 
 runP :: String -> SNode

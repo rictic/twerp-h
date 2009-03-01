@@ -17,7 +17,10 @@ data Work = Eval SNode | Bind String | Unbind String | Apply [SNode] deriving (S
 
 instance Show SNode where
   show (Symbol s) = s
-  show (SList l) = show l
+  show (SList []) = "nil"
+  show (SList l) = "(" ++ (f l) ++ ")"
+        where f [x] = show x
+              f (x:xs) = (show x) ++ " " ++ (f xs)
 
 nil = SList []
 prim a = (a, SList [Symbol "prim", Symbol a])
@@ -36,15 +39,22 @@ step State {env = e, work = (Apply argC):ws, stack=s, intern=i} = State {env=e, 
                               where (args,stk) = splitAt (length argC) s
                                     result = applyPrimOrLambda (last args) (reverse $ init args)
 
-step State {env = e, work = (Eval (SList l)):ws, stack=s, intern=i} = 
-                                      State {env=e, work=wl++ws, stack=s, intern=i}
-                                    where wl = evalListWork l
-
+step State {env = e, work = (Eval (SList l)):ws, stack=s, intern=i} = if head l == (Symbol "quote")
+                                    then State {env=e, work=ws, stack=(l !! 1):s, intern=i}
+                                    else if selfEvaluating (head l)
+                                      then State {env=e, work=ws, stack=(SList l):s, intern=i}
+                                      else State {env=e, work=wl++ws, stack=s, intern=i}
+                                where wl = evalListWork l
+step e@(ErrState _) = e
 
 evalListWork :: [SNode] -> [Work]
 evalListWork l = (map (\a -> (Eval a)) l) ++ [(Apply l)]
 
 applyPrimOrLambda (SList ((Symbol "prim"):[Symbol p])) args = primCall p args
+
+
+selfEvaluating :: SNode -> Bool
+selfEvaluating s = s `elem` (map Symbol ["lambda", "nlambda"])
 
 
 primCall "car" [SList (a:gs)] = a
@@ -56,7 +66,7 @@ run st = case stack $ until noMoreWork step st of
     [s] -> s
     s -> error (show s)
 
-
+noMoreWork (ErrState _) = True
 noMoreWork st = (work st) == []
 
 lookup :: String -> [(String,SNode)] -> SNode
