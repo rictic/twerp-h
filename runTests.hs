@@ -26,15 +26,22 @@ interpreterTests = [
     (stack $ step $ minSt {work=[Apply [nil,nil,nil]], stack=[SList [Symbol "b"], Symbol "a", SList [Symbol "prim", Symbol "cons"]]})
       == [SList [Symbol "a", Symbol "b"]],
     (work $ step $ minSt {work=[Eval (SList [Symbol "cons", Symbol "a", Symbol "b"])]})
-      == [Eval (Symbol "cons"), Eval (Symbol "a"), Eval (Symbol "b"), Apply [Symbol "cons", Symbol "a", Symbol "b"]]
+      == [Eval (Symbol "cons"), Eval (Symbol "a"), Eval (Symbol "b"), Apply [Symbol "cons", Symbol "a", Symbol "b"]],
+    runP "(car car)" == Symbol "prim"
    ]
+
+runP :: String -> SNode
+runP input = case parse snode "test" input of
+     (Left err) → error (show err)
+     (Right s) → run $ stateToEval s
+
 
 parserTests :: [(String, SNode)]
 parserTests = [("this", Symbol "this"),
+               ("foo\\ bar", Symbol "foo bar"),
                ("(foo)", SList [Symbol "foo"]),
                ("(foo bar baz)", SList $ map Symbol ["foo", "bar", "baz"]),
                ("(foo (bar baz) bo)", SList [Symbol "foo", SList [Symbol "bar", Symbol "baz"], Symbol "bo"])]
-
 
 parseB (input, target) = case parse snode "test" input of
     (Left err) → error (show err)

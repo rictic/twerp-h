@@ -40,6 +40,7 @@ step State {env = e, work = (Eval (SList l)):ws, stack=s, intern=i} =
                                       State {env=e, work=wl++ws, stack=s, intern=i}
                                     where wl = evalListWork l
 
+
 evalListWork :: [SNode] -> [Work]
 evalListWork l = (map (\a -> (Eval a)) l) ++ [(Apply l)]
 
@@ -50,6 +51,13 @@ primCall "car" [SList (a:gs)] = a
 primCall "cdr" [SList (a:gs)] = SList gs
 primCall "cons" [a,SList b] = SList (a:b)
 
+run :: State -> SNode
+run st = case stack $ until noMoreWork step st of
+    [s] -> s
+    s -> error (show s)
+
+
+noMoreWork st = (work st) == []
 
 lookup :: String -> [(String,SNode)] -> SNode
 lookup s st = case P.lookup s st of

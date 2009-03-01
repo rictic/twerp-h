@@ -2,17 +2,20 @@
 module TwerpParser
   where
 import Twerp
+import Control.Applicative hiding ((<|>), many)
 import Text.ParserCombinators.Parsec
-import Control.Monad
+
 
 atom :: Parser SNode
-atom = liftM (Symbol) (quotedAtom <|> many1 escapedChar)
+atom = Symbol <$> (quotedAtom <|> many1 escapedChar)
 
 quotedAtom = do char '"'
                 a <- many (noneOf "\"")
                 char '"' 
                 return a
-escapedChar = letter
+escapedChar = letter 
+          <|> digit
+          <|> (char '\\' >> anyChar)
 
 list :: Parser SNode
 list = do char '('
