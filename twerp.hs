@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
-module Main
+module Twerp
   where
 import Prelude hiding (lookup)
 import qualified Prelude as P
+
 
 type Primtype = State -> SNode -> (SNode,State)
 data SNode = SList [SNode] | Symbol String deriving Eq
@@ -56,26 +57,5 @@ lookup s st = case P.lookup s st of
         (Just sym) -> sym
 
 
-main = if all id tests
-       then print "All clear"
-       else print tests >> fail "A test failed"
-
-tests :: [Bool]
-tests = [lookup "x" [] == nil,
-         lookup "x" [("x", Symbol "good")] == Symbol "good",
-         stack (step (stateToEval $ Symbol "car")) == [SList [Symbol "prim", Symbol "car"]],
-         (env $ step $ minSt {work=[Bind "x"], stack=[Symbol "good"]}) == [("x",Symbol "good")],
-         (env $ step $ minSt {work=[Unbind "x"], env=[("x", Symbol "x")]}) == [],
-         isErrState $ step $ minSt {work=[Unbind "x"], env=[("bad", Symbol "x")]},
-         (stack $ step $ minSt {work=[Apply [nil,nil]], stack=[SList [Symbol "a", Symbol "b"], SList [Symbol "prim", Symbol "car"]]})
-          == [Symbol "a"],
-         (stack $ step $ minSt {work=[Apply [nil,nil]], stack=[SList [Symbol "a", Symbol "b"], SList [Symbol "prim", Symbol "cdr"]]})
-           == [SList [Symbol "b"]],
-         (stack $ step $ minSt {work=[Apply [nil,nil,nil]], stack=[SList [Symbol "b"], Symbol "a", SList [Symbol "prim", Symbol "cons"]]})
-           == [SList [Symbol "a", Symbol "b"]],
-         (work $ step $ minSt {work=[Eval (SList [Symbol "cons", Symbol "a", Symbol "b"])]})
-           == [Eval (Symbol "cons"), Eval (Symbol "a"), Eval (Symbol "b"), Apply [Symbol "cons", Symbol "a", Symbol "b"]]
-        ]
-        
 isErrState (ErrState s) = True
 isErrState _ = False
