@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
 module TwerpParser
   where
-import Twerp
+import TwerpInterp
 import Control.Applicative hiding ((<|>), many)
 import Text.ParserCombinators.Parsec hiding (parse)
 import qualified Text.ParserCombinators.Parsec as Parsec

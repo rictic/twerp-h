@@ -2,7 +2,7 @@
 module Main
   where
 import Prelude hiding (read)
-import Twerp
+import TwerpInterp
 import TwerpParser
 import IO
 import Control.Monad.Error
@@ -13,12 +13,8 @@ main = do hSetBuffering stdout NoBuffering
           if b then return ()
             else 
               do input <- getLine
-                 (putStrLn . unwrap) ((parse "interactive shell" input) >>= \val ->
-                                   run (stateToEval val))
+                 (putStrLn . unwrap) ((parse "interactive shell" input) >>= (run . stateToEval))
                  main
-
-toLR (Left er) = fail (show er)
-toLR (Right val) = return val
 
 unwrap (Left er) = er
 unwrap (Right val) = show val

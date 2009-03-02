@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
 module Main
   where
-import Twerp
+import TwerpInterp
 import TwerpParser
 import Control.Monad.Error
 
@@ -12,8 +12,8 @@ main = if all id tests
 tests = interpreterTests ++ (map parseB parserTests)
 
 interpreterTests = [
-    Twerp.lookup "x" [] == Nothing,
-    Twerp.lookup "x" [("x", Symbol "good")] == Just (Symbol "good"),
+    TwerpInterp.lookup "x" [] == Nothing,
+    TwerpInterp.lookup "x" [("x", Symbol "good")] == Just (Symbol "good"),
     stack (stepR (stateToEval $ Symbol "car")) == [SList [Symbol "prim", Symbol "car"]],
     (env $ stepR $ minSt {work=[Bind "x"], stack=[Symbol "good"]}) == [("x",Symbol "good")],
     (env $ stepR $ minSt {work=[Unbind "x"], env=[("x", Symbol "x")]}) == [],

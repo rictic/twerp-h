@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fglasgow-exts #-}
-module Twerp
+module TwerpInterp
   where
 import Prelude hiding (lookup)
 import qualified Prelude as P
