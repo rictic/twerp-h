@@ -23,7 +23,7 @@ instance Show SNode where
 
 nil = SList []
 prim a = (a, SList [Symbol "prim", Symbol a])
-builtins = map prim ["car", "cdr", "cons"]
+builtins = map prim ["car", "cdr", "cons", "explode"]
 
 minSt = State {env = [], work = [], stack = [], intern = builtins}
 stateToEval :: SNode -> State
@@ -64,6 +64,7 @@ selfEvaluating s = s `elem` (map Symbol ["lambda", "nlambda"])
 primCall "car" [SList (a:gs)] = return a
 primCall "cdr" [SList (a:gs)] = return $ SList gs
 primCall "cons" [a,SList b] = return $ SList (a:b)
+primCall "explode" [Symbol s] = return $ SList $ map (Symbol . return) s
 primCall cmd args = fail $ "can't apply " ++ cmd ++ " to args: " ++ (show args)
 
 run :: Monad m => State -> m SNode

@@ -23,8 +23,12 @@ list = do char '('
           char ')'
           return (SList l)
 
+quotelist = do char '\''
+               (SList l) <- list
+               return $ SList $ (Symbol "quote"):l
+
 snode :: Parser SNode
-snode = atom <|> list
+snode = atom <|> list <|> quotelist
 
 parse inputName input = case Parsec.parse snode inputName input of
     (Left err) → fail $ show err
