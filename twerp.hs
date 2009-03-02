@@ -4,14 +4,12 @@ module Twerp
 import Prelude hiding (lookup)
 import qualified Prelude as P
 
-
 type Primtype = State -> SNode -> (SNode,State)
 data SNode = SList [SNode] | Symbol String deriving Eq
 data State = State { env :: [(String, SNode)], 
                        work :: [Work], 
                        stack :: [SNode], 
-                       intern :: [(String, SNode)] } 
-            | ErrState String deriving Show
+                       intern :: [(String, SNode)] } deriving Show
 data Work = Eval SNode | Bind String | Unbind String | Apply [SNode] deriving (Show, Eq)
 
 instance Show SNode where
@@ -21,11 +19,6 @@ instance Show SNode where
         where f [x] = show x
               f (x:xs) = (show x) ++ " " ++ (f xs)
 
-instance Monad (Either String) where
-  fail = Left
-  return = Right
-  (Right v) >>= f = f v
-  (Left err) >>= _ = Left err
 
 nil = SList []
 prim a = (a, SList [Symbol "prim", Symbol a])
@@ -35,29 +28,27 @@ minSt = State {env = [], work = [], stack = [], intern = builtins}
 stateToEval :: SNode -> State
 stateToEval initialExpr = minSt {work = [Eval initialExpr]}
 
-step :: State -> State
+step :: Monad m => State -> m State
 step st@State {work=w:ws} = step' w $ st {work=ws}
-step e@(ErrState v) = e
 
-step' :: Work -> State -> State
-step' (Eval (Symbol x)) st@State {env = e, stack=s, intern=i} = st {stack=lookup x (e++i):s}
-step' (Bind x) st@State {env = e, stack=val:s} = st {env=(x,val):e, stack=s}
+step' :: Monad m => Work -> State -> m State
+step' (Eval (Symbol x)) st@State {env = e, stack=s, intern=i} = return $ st {stack=lookup x (e++i):s}
+step' (Bind x) st@State {env = e, stack=val:s} = return $ st {env=(x,val):e, stack=s}
 step' (Unbind x) st@State {env = (k,v):e} = if k == x 
-                                  then st {env=e}
-                                  else ErrState ("Expected unbind " ++ x ++ " found " ++ k)
+                                  then return $ st {env=e}
+                                  else fail ("Expected unbind " ++ x ++ " found " ++ k)
 step' (Apply argC) st@State {stack=s, work=w} = case func of
-                              SList ((Symbol "lambda"):params:[body]) -> st {work=(addLambdaWork st params body) ++ w, stack=reverse args}
-                              SList ((Symbol "prim"):[Symbol p]) -> case primCall p args of
-                                  Right r -> st {stack=r:stk}
-                                  Left err -> ErrState err
+                              SList ((Symbol "lambda"):params:[body]) -> return $ st {work=(addLambdaWork st params body) ++ w, stack=reverse args}
+                              SList ((Symbol "prim"):[Symbol p]) -> do r <- primCall p args 
+                                                                       return $ st {stack=r:stk}
                           where (argsr,stk) = splitAt (length argC) s
                                 func:args = reverse argsr
                                 addLambdaWork st (SList params) body = (fmap (Bind . show) params)++[Eval body]++(fmap (Unbind . show) (reverse params))
 step' (Eval (SList l)) st = stepFunCall l st
-step' work st = ErrState $ "can't perform " ++ (show work) ++ " with state: " ++ (show st)
+step' work st = fail $ "can't perform " ++ (show work) ++ " with state: " ++ (show st)
 
-stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = st {stack=vs++s}
-stepFunCall l st@State {env = e, work=ws, stack=s} = if selfEvaluating (head l)
+stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = return $ st {stack=vs++s}
+stepFunCall l st@State {env = e, work=ws, stack=s} = return $ if selfEvaluating (head l)
                                       then st {stack=(SList l):s}
                                       else st {work=(evalListWork l)++ws}
 
@@ -73,21 +64,17 @@ primCall "cdr" [SList (a:gs)] = return $ SList gs
 primCall "cons" [a,SList b] = return $ SList (a:b)
 primCall cmd args = fail $ "can't apply " ++ cmd ++ " to args: " ++ (show args)
 
-run :: State -> Either String SNode
-run st = case until noMoreWork step st of
-    ErrState e -> Left e
-    v -> case stack v of
-      [s] -> Right s
-      s -> Left $ "Multiple values left on the stack: " ++ show s
+run st = do v <- loop noMoreWork step (return st)
+            case stack v of
+              [s] -> return s
+              s -> fail $ "Multiple values left on the stack: " ++ show s
 
-noMoreWork (ErrState _) = True
+loop _ _ (Left e)  = Left e
+loop p f (Right v) = if p v then (Right v) else loop p f (f v)
+
 noMoreWork st = (work st) == []
 
 lookup :: String -> [(String,SNode)] -> SNode
 lookup s st = case P.lookup s st of
         Nothing -> nil
         (Just sym) -> sym
-
-
-isErrState (ErrState s) = True
-isErrState _ = False
