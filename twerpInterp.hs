@@ -20,10 +20,9 @@ instance Show SNode where
         where f [x] = show x
               f (x:xs) = (show x) ++ " " ++ (f xs)
 
-
 nil = SList []
 prim a = (a, SList [Symbol "prim", Symbol a])
-builtins = map prim ["car", "cdr", "cons", "explode"]
+builtins = map prim ["car", "cdr", "cons", "explode", "implode"]
 
 minSt = State {env = [], work = [], stack = [], intern = builtins}
 stateToEval :: SNode -> State
@@ -43,6 +42,7 @@ step' (Apply argC) st@State {stack=s, work=w} = case func of
                               SList ((Symbol "lambda"):params:[body]) -> return $ st {work=(addLambdaWork st params body) ++ w, stack=reverse args}
                               SList ((Symbol "prim"):[Symbol p]) -> do r <- primCall p args 
                                                                        return $ st {stack=r:stk}
+                              errval -> fail $ "tried to apply " ++ (show func) ++ " to args " ++ (show args)
                           where (argsr,stk) = splitAt (length argC) s
                                 func:args = reverse argsr
                                 addLambdaWork st (SList params) body = (fmap (Bind . show) params)++[Eval body]++(fmap (Unbind . show) (reverse params))
@@ -65,6 +65,10 @@ primCall "car" [SList (a:gs)] = return a
 primCall "cdr" [SList (a:gs)] = return $ SList gs
 primCall "cons" [a,SList b] = return $ SList (a:b)
 primCall "explode" [Symbol s] = return $ SList $ map (Symbol . return) s
+primCall "implode" [SList symbols] = do strs <- mapM unsymbol symbols
+                                        return $ Symbol $ concat strs
+                        where unsymbol l@(SList _) = fail $ "called implode on a list " ++ (show l)
+                              unsymbol (Symbol s) = return s
 primCall cmd args = fail $ "can't apply " ++ cmd ++ " to args: " ++ (show args)
 
 run :: Monad m => State -> m SNode

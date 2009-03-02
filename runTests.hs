@@ -66,6 +66,8 @@ runTwerpTest (v, c) = if (runP v) == c then True else error ("expected " ++ (sho
 twerpTests = [("(car car)", Symbol "prim"),
     ("(quote (car car))", SList $ map Symbol ["car", "car"]),
     ("((lambda (a) (car a)) car)", Symbol "prim"),
-    ("(explode '(abc))", SList [Symbol "a", Symbol "b", Symbol "c"])]
+    ("(explode '(abc))", SList [Symbol "a", Symbol "b", Symbol "c"]),
+    ("(implode (explode '(abc)))", Symbol "abc")
+    ]
 
 twerpFailTests = ["()"]
