@@ -36,27 +36,29 @@ minSt = State {env = [], work = [], stack = [], intern = builtins}
 stateToEval :: SNode -> State
 stateToEval initialExpr = minSt {work = [Eval initialExpr]}
 
+step :: State -> State
 step st@State {work=w:ws} = step' w $ st {work=ws}
+step e@(ErrState v) = e
+
 step' :: Work -> State -> State
 step' (Eval (Symbol x)) st@State {env = e, stack=s, intern=i} = st {stack=lookup x (e++i):s}
 step' (Bind x) st@State {env = e, stack=val:s} = st {env=(x,val):e, stack=s}
-step' (Unbind x) st@State {env = (k,v):e} = if k == x then st {env=e}
-                                                                  else ErrState ("Expected unbind " ++ x ++ " found " ++ k)
+step' (Unbind x) st@State {env = (k,v):e} = if k == x 
+                                  then st {env=e}
+                                  else ErrState ("Expected unbind " ++ x ++ " found " ++ k)
 step' (Apply argC) st@State {stack=s} = case result of 
                               Right r -> st {stack=r:stk}
                               Left err -> ErrState err
                           where (args,stk) = splitAt (length argC) s
                                 result = applyPrimOrLambda (last args) (reverse $ init args)
 
-
-step' (Eval (SList l)) st@State {env = e, work=ws, stack=s} = if head l == (Symbol "quote")
-                                    then st {stack=(l !! 1):s}
-                                    else if selfEvaluating (head l)
-                                      then st {stack=(SList l):s}
-                                      else st {work=wl++ws, stack=s}
-                                where wl = evalListWork l
-step' _ e@(ErrState _) = e
+step' (Eval (SList l)) st = stepFunCall l st
 step' work st = ErrState $ "can't perform " ++ (show work) ++ " with state: " ++ (show st)
+
+stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = st {stack=vs++s}
+stepFunCall l st@State {env = e, work=ws, stack=s} = if selfEvaluating (head l)
+                                      then st {stack=(SList l):s}
+                                      else st {work=(evalListWork l)++ws}
 
 evalListWork :: [SNode] -> [Work]
 evalListWork l = (map (\a -> (Eval a)) l) ++ [(Apply l)]
