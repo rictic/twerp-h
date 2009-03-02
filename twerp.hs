@@ -13,7 +13,6 @@ data State = State { env :: [(String, SNode)],
                        intern :: [(String, SNode)] } 
             | ErrState String deriving Show
 data Work = Eval SNode | Bind String | Unbind String | Apply [SNode] deriving (Show, Eq)
---type statefunc a = State -> (State, a)
 
 instance Show SNode where
   show (Symbol s) = s
@@ -46,12 +45,14 @@ step' (Bind x) st@State {env = e, stack=val:s} = st {env=(x,val):e, stack=s}
 step' (Unbind x) st@State {env = (k,v):e} = if k == x 
                                   then st {env=e}
                                   else ErrState ("Expected unbind " ++ x ++ " found " ++ k)
-step' (Apply argC) st@State {stack=s} = case result of 
-                              Right r -> st {stack=r:stk}
-                              Left err -> ErrState err
-                          where (args,stk) = splitAt (length argC) s
-                                result = applyPrimOrLambda (last args) (reverse $ init args)
-
+step' (Apply argC) st@State {stack=s, work=w} = case func of
+                              SList ((Symbol "lambda"):params:[body]) -> st {work=(addLambdaWork st params body) ++ w, stack=reverse args}
+                              SList ((Symbol "prim"):[Symbol p]) -> case primCall p args of
+                                  Right r -> st {stack=r:stk}
+                                  Left err -> ErrState err
+                          where (argsr,stk) = splitAt (length argC) s
+                                func:args = reverse argsr
+                                addLambdaWork st (SList params) body = (fmap (Bind . show) params)++[Eval body]++(fmap (Unbind . show) (reverse params))
 step' (Eval (SList l)) st = stepFunCall l st
 step' work st = ErrState $ "can't perform " ++ (show work) ++ " with state: " ++ (show st)
 
@@ -63,8 +64,6 @@ stepFunCall l st@State {env = e, work=ws, stack=s} = if selfEvaluating (head l)
 evalListWork :: [SNode] -> [Work]
 evalListWork l = (map (\a -> (Eval a)) l) ++ [(Apply l)]
 
-applyPrimOrLambda (SList ((Symbol "prim"):[Symbol p])) args = (primCall p args) >>= return 
-applyPrimOrLambda v args = fail $ "don't know how to apply " ++ (show v) ++ " to " ++ (show args)
 
 selfEvaluating :: SNode -> Bool
 selfEvaluating s = s `elem` (map Symbol ["lambda", "nlambda"])
