@@ -3,13 +3,14 @@ module Main
   where
 import TwerpInterp
 import TwerpParser
+import Twerp
 import Control.Monad.Error
 
 main = if all id tests
-       then putStrLn (((show . length) tests) ++ " tests run, all passed")
+       then putStrLn ((show . length) tests ++ " tests run, all passed")
        else print tests >> fail "A test failed"
 
-tests = interpreterTests ++ (map parseB parserTests) ++ (map runTwerpTest twerpTests) ++ (map runErr twerpFailTests)
+tests = interpreterTests ++ map parseB parserTests ++ map runTwerpTest twerpTests ++ map runErr twerpFailTests
 
 interpreterTests = [
     TwerpInterp.lookup "x" [] == Nothing,
@@ -37,7 +38,7 @@ stepR st = case step st of
         Right val -> val
 stepErr st = case step st of
         Nothing -> True
-        Just val -> error $ "Expected an error, got: " ++ (show val)
+        Just val -> error $ "Expected an error, got: " ++ show val
 runP :: String -> SNode
 runP input = case parseRun input of
       Left err -> error err
@@ -45,7 +46,7 @@ runP input = case parseRun input of
 runErr :: String -> Bool
 runErr input = case parseRun input of
      Nothing -> True
-     Just s -> error $ (show s) ++ " should have failed" 
+     Just s -> error $ show s ++ " should have failed" 
 
 parseRun input = parse "test" input >>= (run.stateToEval) 
 
@@ -58,10 +59,10 @@ parserTests = [("this", Symbol "this"),
                ("'(abc)", SList [Symbol "quote", Symbol "abc"])]
 
 parseB (input, target) = case parse "test" input of
-    (Left err) → error err
-    (Right s) → if s == target then True else error ("expected " ++ (show target) ++ "\n but got " ++ (show s))
+    (Left err) -> error err
+    (Right s) -> (s == target) || error ("expected " ++ show target ++ "\n but got " ++ show s)
 
-runTwerpTest (v, c) = if (runP v) == c then True else error ("expected " ++ (show c) ++ "\n but got " ++ (show (runP v)))
+runTwerpTest (v, c) = runP v == c || error ("expected " ++ show c ++ "\n but got " ++ show (runP v))
 
 twerpTests = [("(car car)", Symbol "prim"),
     ("(quote (car car))", SList $ map Symbol ["car", "car"]),
