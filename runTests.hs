@@ -30,7 +30,8 @@ interpreterTests = [
       == [Eval (Symbol "cons"), Eval (Symbol "a"), Eval (Symbol "b"), Apply [Symbol "cons", Symbol "a", Symbol "b"]],
     runP "(car car)" == Symbol "prim",
     runP "(quote (car car))" == (SList $ map Symbol ["car", "car"]),
-    runP "((lambda (a) (car a)) car)" == Symbol "prim"
+    runP "((lambda (a) (car a)) car)" == Symbol "prim",
+    runErr "()"
    ]
 
 stepR st = case step st of
@@ -41,11 +42,16 @@ stepErr st = case step st of
         Just val -> error $ "Expected an error, got: " ++ (show val)
 runP :: String -> SNode
 runP input = case parse snode "test" input of
-     (Left err) → error (show err)
-     (Right s) → case (run.stateToEval) s of
-        (Left err) -> error err
-        (Right s) -> s
-
+     Left err → error (show err)
+     Right s → case (run.stateToEval) s of
+        Left err -> error err
+        Right s -> s
+runErr :: String -> Bool
+runErr input = case parse snode "test" input of
+     Left err -> True
+     Right s -> case (run.stateToEval) s of
+       Nothing -> True
+       Just a -> False
 
 parserTests :: [(String, SNode)]
 parserTests = [("this", Symbol "this"),

@@ -6,13 +6,21 @@ import Twerp
 import TwerpParser
 import IO
 import Text.ParserCombinators.Parsec
+import Control.Monad.Error
 
-main = repl
-repl = isEOF >>= (\b -> if b then return () else rep >> repl)
-rep = read >>= eval >>= putStrLn
-read = getLine >>= \input -> case parse snode "interactive shell" input of
-    (Left err) → return (ErrState (show err))
-    (Right s) → return (stateToEval s)
-eval v = case run v of
-  Left err -> return err
-  Right val -> return (show val)
+main = do hSetBuffering stdout NoBuffering
+          putStr ">> "
+          b <- isEOF
+          if b then return ()
+            else 
+              do input <- getLine
+                 (putStrLn . unwrap) (toLR (parse snode "interactive shell" input) >>= \val ->
+                                   run (stateToEval val))
+                 main
+
+toLR (Left er) = fail (show er)
+toLR (Right val) = return val
+
+unwrap (Left er) = er
+unwrap (Right val) = show val
+                     

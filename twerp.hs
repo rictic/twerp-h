@@ -3,6 +3,7 @@ module Twerp
   where
 import Prelude hiding (lookup)
 import qualified Prelude as P
+import Control.Monad.Error
 
 type Primtype = State -> SNode -> (SNode,State)
 data SNode = SList [SNode] | Symbol String deriving Eq
@@ -45,13 +46,14 @@ step' (Apply argC) st@State {stack=s, work=w} = case func of
                           where (argsr,stk) = splitAt (length argC) s
                                 func:args = reverse argsr
                                 addLambdaWork st (SList params) body = (fmap (Bind . show) params)++[Eval body]++(fmap (Unbind . show) (reverse params))
-step' (Eval (SList l)) st = return $ stepFunCall l st
+step' (Eval (SList l)) st = stepFunCall l st
 step' work st = fail $ "can't perform " ++ (show work) ++ " with state: " ++ (show st)
 
-stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = st {stack=vs++s}
-stepFunCall l st@State {env = e, work=ws, stack=s} = if selfEvaluating (head l)
-                                      then st {stack=(SList l):s}
-                                      else st {work=(evalListWork l)++ws}
+stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = return $ st {stack=vs++s}
+stepFunCall l@(f:fs) st@State {env = e, work=ws, stack=s} = if selfEvaluating f
+                                      then return $ st {stack=(SList l):s}
+                                      else return $ st {work=(evalListWork l)++ws}
+stepFunCall [] _ = fail "can't evaluate nil"
 
 evalListWork :: [SNode] -> [Work]
 evalListWork l = (map (\a -> (Eval a)) l) ++ [(Apply l)]
@@ -64,10 +66,14 @@ primCall "cdr" [SList (a:gs)] = return $ SList gs
 primCall "cons" [a,SList b] = return $ SList (a:b)
 primCall cmd args = fail $ "can't apply " ++ cmd ++ " to args: " ++ (show args)
 
-run st = do v <- loop noMoreWork step (return st)
-            case stack v of
-              [s] -> return s
-              s -> fail $ "Multiple values left on the stack: " ++ show s
+run :: Monad m => State -> m SNode
+run st = case run' st of
+            Right ([val])  -> return val
+            Right vals -> fail $ "Multiple values left on the stack: " ++ show vals
+            Left err -> fail err
+  
+run' st = do v <- loop noMoreWork step (return st)
+             return (stack v)
 
 loop _ _ (Left e)  = Left e
 loop p f (Right v) = if p v then (Right v) else loop p f (f v)
