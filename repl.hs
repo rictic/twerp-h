@@ -5,7 +5,6 @@ import Prelude hiding (read)
 import Twerp
 import TwerpParser
 import IO
-import Text.ParserCombinators.Parsec
 import Control.Monad.Error
 
 main = do hSetBuffering stdout NoBuffering
@@ -14,7 +13,7 @@ main = do hSetBuffering stdout NoBuffering
           if b then return ()
             else 
               do input <- getLine
-                 (putStrLn . unwrap) (toLR (parse snode "interactive shell" input) >>= \val ->
+                 (putStrLn . unwrap) ((parse "interactive shell" input) >>= \val ->
                                    run (stateToEval val))
                  main
 

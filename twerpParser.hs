@@ -3,8 +3,8 @@ module TwerpParser
   where
 import Twerp
 import Control.Applicative hiding ((<|>), many)
-import Text.ParserCombinators.Parsec
-
+import Text.ParserCombinators.Parsec hiding (parse)
+import qualified Text.ParserCombinators.Parsec as Parsec
 
 atom :: Parser SNode
 atom = Symbol <$> (quotedAtom <|> many1 escapedChar)
@@ -25,3 +25,7 @@ list = do char '('
 
 snode :: Parser SNode
 snode = atom <|> list
+
+parse inputName input = case Parsec.parse snode inputName input of
+    (Left err) → fail $ show err
+    (Right s) → return s
