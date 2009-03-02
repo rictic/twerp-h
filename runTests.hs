@@ -34,7 +34,9 @@ interpreterTests = [
 runP :: String -> SNode
 runP input = case parse snode "test" input of
      (Left err) → error (show err)
-     (Right s) → run $ stateToEval s
+     (Right s) → case (run.stateToEval) s of
+        (Left err) -> error err
+        (Right s) -> s
 
 
 parserTests :: [(String, SNode)]

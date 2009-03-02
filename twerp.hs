@@ -22,6 +22,12 @@ instance Show SNode where
         where f [x] = show x
               f (x:xs) = (show x) ++ " " ++ (f xs)
 
+instance Monad (Either String) where
+  fail = Left
+  return = Right
+  (Right v) >>= f = f v
+  (Left err) >>= _ = Left err
+
 nil = SList []
 prim a = (a, SList [Symbol "prim", Symbol a])
 builtins = map prim ["car", "cdr", "cons"]
@@ -35,7 +41,9 @@ step State {env = e, work = (Eval (Symbol x)):ws, stack=s, intern=i} = State {en
 step State {env = e, work = (Bind x):ws, stack=val:s, intern=i} = State {env=(x,val):e, work=ws, stack=s,intern=i}
 step State {env = (k,v):e, work = (Unbind x):ws, stack=s, intern=i} = if k == x then State {env=e, work=ws, stack=s,intern=i}
                                                                               else ErrState ("Expected unbind " ++ x ++ " found " ++ k)
-step State {env = e, work = (Apply argC):ws, stack=s, intern=i} = State {env=e, work=ws, stack=result:stk,intern=i}
+step State {env = e, work = (Apply argC):ws, stack=s, intern=i} = case result of 
+                              Right r -> State {env=e, work=ws, stack=r:stk,intern=i}
+                              Left err -> ErrState err
                               where (args,stk) = splitAt (length argC) s
                                     result = applyPrimOrLambda (last args) (reverse $ init args)
 
@@ -46,25 +54,28 @@ step State {env = e, work = (Eval (SList l)):ws, stack=s, intern=i} = if head l 
                                       else State {env=e, work=wl++ws, stack=s, intern=i}
                                 where wl = evalListWork l
 step e@(ErrState _) = e
+step v = ErrState $ "can't continue evaluating: " ++ show v
 
 evalListWork :: [SNode] -> [Work]
 evalListWork l = (map (\a -> (Eval a)) l) ++ [(Apply l)]
 
-applyPrimOrLambda (SList ((Symbol "prim"):[Symbol p])) args = primCall p args
-
+applyPrimOrLambda (SList ((Symbol "prim"):[Symbol p])) args = (primCall p args) >>= return 
+applyPrimOrLambda v args = fail $ "don't know how to apply " ++ (show v) ++ " to " ++ (show args)
 
 selfEvaluating :: SNode -> Bool
 selfEvaluating s = s `elem` (map Symbol ["lambda", "nlambda"])
 
+primCall "car" [SList (a:gs)] = return a
+primCall "cdr" [SList (a:gs)] = return $ SList gs
+primCall "cons" [a,SList b] = return $ SList (a:b)
+primCall cmd args = fail $ "can't apply " ++ cmd ++ " to args: " ++ (show args)
 
-primCall "car" [SList (a:gs)] = a
-primCall "cdr" [SList (a:gs)] = SList gs
-primCall "cons" [a,SList b] = SList (a:b)
-
-run :: State -> SNode
-run st = case stack $ until noMoreWork step st of
-    [s] -> s
-    s -> error (show s)
+run :: State -> Either String SNode
+run st = case until noMoreWork step st of
+    ErrState e -> Left e
+    v -> case stack v of
+      [s] -> Right s
+      s -> Left $ "Multiple values left on the stack: " ++ show s
 
 noMoreWork (ErrState _) = True
 noMoreWork st = (work st) == []
