@@ -32,7 +32,8 @@ step :: Monad m => State -> m State
 step st@State {work=w:ws} = step' w $ st {work=ws}
 
 step' :: Monad m => Work -> State -> m State
-step' (Eval (Symbol x)) st@State {env = e, stack=s, intern=i} = return $ st {stack=lookup x (e++i):s}
+step' (Eval (Symbol x)) st@State {env = e, stack=s, intern=i} = do v <- lookup x (e++i)
+                                                                   return $ st {stack=v:s}
 step' (Bind x) st@State {env = e, stack=val:s} = return $ st {env=(x,val):e, stack=s}
 step' (Unbind x) st@State {env = (k,v):e} = if k == x 
                                   then return $ st {env=e}
@@ -44,17 +45,16 @@ step' (Apply argC) st@State {stack=s, work=w} = case func of
                           where (argsr,stk) = splitAt (length argC) s
                                 func:args = reverse argsr
                                 addLambdaWork st (SList params) body = (fmap (Bind . show) params)++[Eval body]++(fmap (Unbind . show) (reverse params))
-step' (Eval (SList l)) st = stepFunCall l st
+step' (Eval (SList l)) st = return $ stepFunCall l st
 step' work st = fail $ "can't perform " ++ (show work) ++ " with state: " ++ (show st)
 
-stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = return $ st {stack=vs++s}
-stepFunCall l st@State {env = e, work=ws, stack=s} = return $ if selfEvaluating (head l)
+stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = st {stack=vs++s}
+stepFunCall l st@State {env = e, work=ws, stack=s} = if selfEvaluating (head l)
                                       then st {stack=(SList l):s}
                                       else st {work=(evalListWork l)++ws}
 
 evalListWork :: [SNode] -> [Work]
 evalListWork l = (map (\a -> (Eval a)) l) ++ [(Apply l)]
-
 
 selfEvaluating :: SNode -> Bool
 selfEvaluating s = s `elem` (map Symbol ["lambda", "nlambda"])
@@ -74,7 +74,7 @@ loop p f (Right v) = if p v then (Right v) else loop p f (f v)
 
 noMoreWork st = (work st) == []
 
-lookup :: String -> [(String,SNode)] -> SNode
+lookup :: Monad m => String -> [(String,SNode)] -> m SNode
 lookup s st = case P.lookup s st of
-        Nothing -> nil
-        (Just sym) -> sym
+        Nothing -> fail $ "undefined reference to " ++ s
+        (Just sym) -> return sym

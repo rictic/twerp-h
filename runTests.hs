@@ -14,8 +14,8 @@ main = if all id tests
 tests = interpreterTests ++ (map parseB parserTests)
 
 interpreterTests = [
-    Twerp.lookup "x" [] == nil,
-    Twerp.lookup "x" [("x", Symbol "good")] == Symbol "good",
+    Twerp.lookup "x" [] == Nothing,
+    Twerp.lookup "x" [("x", Symbol "good")] == Just (Symbol "good"),
     stack (stepR (stateToEval $ Symbol "car")) == [SList [Symbol "prim", Symbol "car"]],
     (env $ stepR $ minSt {work=[Bind "x"], stack=[Symbol "good"]}) == [("x",Symbol "good")],
     (env $ stepR $ minSt {work=[Unbind "x"], env=[("x", Symbol "x")]}) == [],
@@ -37,8 +37,8 @@ stepR st = case step st of
         Left err -> error err
         Right val -> val
 stepErr st = case step st of
-        Left (err :: String) -> True
-        Right val -> error $ "Expected an error, got: " ++ (show val)
+        Nothing -> True
+        Just val -> error $ "Expected an error, got: " ++ (show val)
 runP :: String -> SNode
 runP input = case parse snode "test" input of
      (Left err) → error (show err)
