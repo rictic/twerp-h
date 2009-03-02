@@ -36,25 +36,27 @@ minSt = State {env = [], work = [], stack = [], intern = builtins}
 stateToEval :: SNode -> State
 stateToEval initialExpr = minSt {work = [Eval initialExpr]}
 
-step :: State -> State
-step State {env = e, work = (Eval (Symbol x)):ws, stack=s, intern=i} = State {env=e, work=ws, stack=lookup x (e++i):s, intern=i}
-step State {env = e, work = (Bind x):ws, stack=val:s, intern=i} = State {env=(x,val):e, work=ws, stack=s,intern=i}
-step State {env = (k,v):e, work = (Unbind x):ws, stack=s, intern=i} = if k == x then State {env=e, work=ws, stack=s,intern=i}
-                                                                              else ErrState ("Expected unbind " ++ x ++ " found " ++ k)
-step State {env = e, work = (Apply argC):ws, stack=s, intern=i} = case result of 
-                              Right r -> State {env=e, work=ws, stack=r:stk,intern=i}
+step st@State {work=w:ws} = step' w $ st {work=ws}
+step' :: Work -> State -> State
+step' (Eval (Symbol x)) st@State {env = e, stack=s, intern=i} = st {stack=lookup x (e++i):s}
+step' (Bind x) st@State {env = e, stack=val:s} = st {env=(x,val):e, stack=s}
+step' (Unbind x) st@State {env = (k,v):e} = if k == x then st {env=e}
+                                                                  else ErrState ("Expected unbind " ++ x ++ " found " ++ k)
+step' (Apply argC) st@State {stack=s} = case result of 
+                              Right r -> st {stack=r:stk}
                               Left err -> ErrState err
-                              where (args,stk) = splitAt (length argC) s
-                                    result = applyPrimOrLambda (last args) (reverse $ init args)
+                          where (args,stk) = splitAt (length argC) s
+                                result = applyPrimOrLambda (last args) (reverse $ init args)
 
-step State {env = e, work = (Eval (SList l)):ws, stack=s, intern=i} = if head l == (Symbol "quote")
-                                    then State {env=e, work=ws, stack=(l !! 1):s, intern=i}
+
+step' (Eval (SList l)) st@State {env = e, work=ws, stack=s} = if head l == (Symbol "quote")
+                                    then st {stack=(l !! 1):s}
                                     else if selfEvaluating (head l)
-                                      then State {env=e, work=ws, stack=(SList l):s, intern=i}
-                                      else State {env=e, work=wl++ws, stack=s, intern=i}
+                                      then st {stack=(SList l):s}
+                                      else st {work=wl++ws, stack=s}
                                 where wl = evalListWork l
-step e@(ErrState _) = e
-step v = ErrState $ "can't continue evaluating: " ++ show v
+step' _ e@(ErrState _) = e
+step' work st = ErrState $ "can't perform " ++ (show work) ++ " with state: " ++ (show st)
 
 evalListWork :: [SNode] -> [Work]
 evalListWork l = (map (\a -> (Eval a)) l) ++ [(Apply l)]
