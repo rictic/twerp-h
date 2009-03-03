@@ -24,8 +24,8 @@ list = do char '('
           return (SList l)
 
 quotelist = do char '\''
-               (SList l) <- list
-               return $ SList $ Symbol "quote":l
+               s <- snode
+               return $ SList [Symbol "quote", s]
 
 snode :: Parser SNode
 snode = atom <|> list <|> quotelist

@@ -6,12 +6,28 @@ import TwerpParser
 import Twerp
 import Control.Monad.Error
 
-main = if all id tests
-       then putStrLn ((show . length) tests ++ " tests run, all passed")
-       else print tests >> fail "A test failed"
+--Short programs, and their results
+twerpTests = [("(car car)", Symbol "prim"),
+    ("(quote (car car))", SList $ map Symbol ["car", "car"]),
+    ("((lambda (a) (car a)) car)", Symbol "prim"),
+    ("(explode 'abc)", SList [Symbol "a", Symbol "b", Symbol "c"]),
+    ("(implode (explode 'abc))", Symbol "abc")
+    ]
 
-tests = interpreterTests ++ map parseB parserTests ++ map runTwerpTest twerpTests ++ map runErr twerpFailTests
+--Trying to run these programs should give an error
+twerpFailTests = ["()"]
 
+--Programs and the values they should parse to
+parserTests = [("foo", Symbol "foo"),
+               ("foo\\ bar", Symbol "foo bar"),
+               ("(foo)", SList [Symbol "foo"]),
+               ("(foo bar baz)", SList $ map Symbol ["foo", "bar", "baz"]),
+               ("(foo (bar baz) bo)", SList [Symbol "foo", SList [Symbol "bar", Symbol "baz"], Symbol "bo"]),
+               ("'abc", SList [Symbol "quote", Symbol "abc"]),
+               ("'(abc def)", SList [Symbol "quote", SList [Symbol "abc", Symbol "def"]])]
+
+
+--Tests of the interpreter primitives
 interpreterTests = [
     TwerpInterp.lookup "x" [] == Nothing,
     TwerpInterp.lookup "x" [("x", Symbol "good")] == Just (Symbol "good"),
@@ -28,6 +44,13 @@ interpreterTests = [
     (work $ stepR $ minSt {work=[Eval (SList [Symbol "cons", Symbol "a", Symbol "b"])]})
       == [Eval (Symbol "cons"), Eval (Symbol "a"), Eval (Symbol "b"), Apply [Symbol "cons", Symbol "a", Symbol "b"]]
    ]
+
+
+runTwerpTest (v, c) = runP v == c || error ("expected " ++ show c ++ "\n but got " ++ show (runP v))
+
+
+tests = interpreterTests ++ map parseB parserTests ++ map runTwerpTest twerpTests ++ map runErr twerpFailTests
+
 
 step1 input = case parse "test" input >>= (step . stateToEval) of
       Left err -> error err
@@ -50,25 +73,12 @@ runErr input = case parseRun input of
 
 parseRun input = parse "test" input >>= (run.stateToEval) 
 
-parserTests :: [(String, SNode)]
-parserTests = [("this", Symbol "this"),
-               ("foo\\ bar", Symbol "foo bar"),
-               ("(foo)", SList [Symbol "foo"]),
-               ("(foo bar baz)", SList $ map Symbol ["foo", "bar", "baz"]),
-               ("(foo (bar baz) bo)", SList [Symbol "foo", SList [Symbol "bar", Symbol "baz"], Symbol "bo"]),
-               ("'(abc)", SList [Symbol "quote", Symbol "abc"])]
 
 parseB (input, target) = case parse "test" input of
     (Left err) -> error err
     (Right s) -> (s == target) || error ("expected " ++ show target ++ "\n but got " ++ show s)
 
-runTwerpTest (v, c) = runP v == c || error ("expected " ++ show c ++ "\n but got " ++ show (runP v))
 
-twerpTests = [("(car car)", Symbol "prim"),
-    ("(quote (car car))", SList $ map Symbol ["car", "car"]),
-    ("((lambda (a) (car a)) car)", Symbol "prim"),
-    ("(explode '(abc))", SList [Symbol "a", Symbol "b", Symbol "c"]),
-    ("(implode (explode '(abc)))", Symbol "abc")
-    ]
-
-twerpFailTests = ["()"]
+main = if all id tests
+       then putStrLn ((show . length) tests ++ " tests run, all passed")
+       else print tests >> fail "A test failed"
