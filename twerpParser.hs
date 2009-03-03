@@ -7,12 +7,12 @@ import Text.ParserCombinators.Parsec hiding (parse)
 import qualified Text.ParserCombinators.Parsec as Parsec
 
 atom :: Parser SNode
-atom = Symbol <$> (quotedAtom <|> many1 escapedChar)
+atom = Symbol <$> (doubleQuoteAtom <|> many1 escapedChar)
 
-quotedAtom = do char '"'
-                a <- many (noneOf "\"")
-                char '"' 
-                return a
+doubleQuoteAtom = do char '"'
+                     a <- many (noneOf "\"")
+                     char '"' 
+                     return a
 escapedChar = letter 
           <|> digit
           <|> char '#'
@@ -25,13 +25,13 @@ list = do char '('
           char ')'
           return (SList l)
 
-quotelist = do char '\''
-               s <- snode
-               return $ SList [Symbol "quote", s]
+quoted = do char '\''
+            s <- snode
+            return $ SList [Symbol "quote", s]
 
 
 snode :: Parser SNode
-snode = whitespace >> (atom <|> list <|> quotelist) >>= \x -> whitespace >> return x
+snode = whitespace >> (atom <|> list <|> quoted) >>= \x -> whitespace >> return x
 
 skip p = p >> return ()
 whitespace = skip $ many $ comment <|> skip (oneOf " \t\r\n")
