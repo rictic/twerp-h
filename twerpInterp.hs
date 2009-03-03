@@ -21,8 +21,10 @@ instance Show SNode where
               f (x:xs) = show x ++ " " ++ f xs
 
 nil = SList []
+true = Symbol "#t"
+false = Symbol "#f"
 prim a = (a, SList [Symbol "prim", Symbol a])
-builtins = map prim ["car", "cdr", "cons", "explode", "implode"]
+builtins = map prim ["car", "cdr", "cons", "explode", "implode", "null"]
 
 minSt = State {env = [], work = [], stack = [], intern = builtins}
 stateToEval :: SNode -> State
@@ -72,6 +74,7 @@ primCall "implode" [SList symbols] = do strs <- mapM unsymbol symbols
                                         return $ Symbol $ concat strs
                         where unsymbol l@(SList _) = fail $ "called implode on a list " ++ show l
                               unsymbol (Symbol s) = return s
+primCall "null" [v] = return $ if v == nil then true else false
 primCall cmd args = fail $ "can't apply " ++ cmd ++ " to args: " ++ show args
 
 run :: Monad m => State -> m SNode

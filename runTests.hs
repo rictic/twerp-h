@@ -14,7 +14,10 @@ twerpTests = [("(car car)", Symbol "prim"),
     ("(implode (explode 'abc))", Symbol "abc"),
     ("(if '#t 'a 'b)", Symbol "a"),
     ("(if '#f 'a 'b)", Symbol "b"),
-    ("(if '() 'a 'b)", Symbol "b")
+    ("(if '() 'a 'b)", Symbol "b"),
+    ("(null '())", Symbol "#t"),
+    ("(null 'a)", Symbol "#f"),
+    ("(null '(a))", Symbol "#f")
     ]
 
 --Trying to run these programs should give an error
@@ -49,7 +52,7 @@ interpreterTests = [
    ]
 
 
-runTwerpTest (v, c) = runP v == c || error ("expected " ++ show c ++ "\n but got " ++ show (runP v))
+runTwerpTest (v, c) = runP v == c || error ("error evaluating " ++ v ++ " - expected " ++ show c ++ "\n but got " ++ show (runP v))
 
 
 tests = interpreterTests ++ map parseB parserTests ++ map runTwerpTest twerpTests ++ map runErr twerpFailTests
