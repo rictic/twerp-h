@@ -7,18 +7,21 @@ import Twerp
 import Control.Monad.Error
 
 --Short programs, and their results
-twerpTests = [("(car car)", Symbol "prim"),
-    ("(quote (car car))", SList $ map Symbol ["car", "car"]),
-    ("((lambda (a) (car a)) car)", Symbol "prim"),
-    ("(explode 'abc)", SList [Symbol "a", Symbol "b", Symbol "c"]),
-    ("(implode (explode 'abc))", Symbol "abc"),
-    ("(if '#t 'a 'b)", Symbol "a"),
-    ("(if '#f 'a 'b)", Symbol "b"),
-    ("(if '() 'a 'b)", Symbol "b"),
-    ("(null '())", Symbol "#t"),
-    ("(null 'a)", Symbol "#f"),
-    ("(null '(a))", Symbol "#f"),
-    ("nil", nil)
+twerpTests = [("(car car)", Symbol "prim")
+    ,("(quote (car car))", SList $ map Symbol ["car", "car"])
+    ,("((lambda (a) (car a)) car)", Symbol "prim")
+    ,("(explode 'abc)", SList [Symbol "a", Symbol "b", Symbol "c"])
+    ,("(implode (explode 'abc))", Symbol "abc")
+    ,("(if '#t 'a 'b)", Symbol "a")
+    ,("(if '#f 'a 'b)", Symbol "b")
+    ,("(if '() 'a 'b)", Symbol "b")
+    ,("(null '())", true)
+    ,("(null 'a)", false)
+    ,("(null '(a))", false)
+    ,("nil", nil)
+    ,("(atomp 'a)", true)
+    ,("(atomp '())", false)
+    ,("(atomp '(a))", false)
     ]
 
 --Trying to run these programs should give an error
