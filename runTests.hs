@@ -7,7 +7,9 @@ import Twerp
 import Control.Monad.Error
 
 --Short programs, and their results
-twerpTests = [("(car car)", Symbol "prim")
+twerpTests = 
+    [("()", nil)
+    ,("(car car)", Symbol "prim")
     ,("(quote (car car))", SList $ map Symbol ["car", "car"])
     ,("((lambda (a) (car a)) car)", Symbol "prim")
     ,("(explode 'abc)", SList [Symbol "a", Symbol "b", Symbol "c"])
@@ -25,7 +27,7 @@ twerpTests = [("(car car)", Symbol "prim")
     ]
 
 --Trying to run these programs should give an error
-twerpFailTests = ["()"]
+twerpFailTests = []
 
 --Programs and the values they should parse to
 parserTests = [("foo", Symbol "foo"),

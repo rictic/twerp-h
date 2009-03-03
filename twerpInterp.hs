@@ -58,7 +58,7 @@ stepFunCall ((Symbol "if"):[p,thenV,elseV]) st@State {work=ws, stack=s} = return
 stepFunCall l@(f:fs) st@State {env = e, work=ws, stack=s} = if selfEvaluating f
                                       then return $ st {stack=SList l:s}
                                       else return $ st {work=evalListWork l++ws}
-stepFunCall [] _ = fail "can't evaluate nil"
+stepFunCall [] st@State {stack=s} = return $ st {stack=nil:s}
 
 evalListWork :: [SNode] -> [Work]
 evalListWork l = map (\a -> (Eval a)) l ++ [Apply l]
