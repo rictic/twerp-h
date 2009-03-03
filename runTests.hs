@@ -11,7 +11,10 @@ twerpTests = [("(car car)", Symbol "prim"),
     ("(quote (car car))", SList $ map Symbol ["car", "car"]),
     ("((lambda (a) (car a)) car)", Symbol "prim"),
     ("(explode 'abc)", SList [Symbol "a", Symbol "b", Symbol "c"]),
-    ("(implode (explode 'abc))", Symbol "abc")
+    ("(implode (explode 'abc))", Symbol "abc"),
+    ("(if '#t 'a 'b)", Symbol "a"),
+    ("(if '#f 'a 'b)", Symbol "b"),
+    ("(if '() 'a 'b)", Symbol "b")
     ]
 
 --Trying to run these programs should give an error

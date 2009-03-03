@@ -11,7 +11,7 @@ data State = State { env :: [(String, SNode)],
                        work :: [Work], 
                        stack :: [SNode], 
                        intern :: [(String, SNode)] } deriving Show
-data Work = Eval SNode | Bind String | Unbind String | Apply [SNode] deriving (Show, Eq)
+data Work = Eval SNode | Bind String | Unbind String | Apply [SNode] | If deriving (Show, Eq)
 
 instance Show SNode where
   show (Symbol s) = s
@@ -47,9 +47,12 @@ step' (Apply argC) st@State {stack=s, work=w} = case func of
                                 func:args = reverse argsr
                                 addLambdaWork st (SList params) body = map (Bind . show) params ++ [Eval body] ++ map (Unbind . show) (reverse params)
 step' (Eval (SList l)) st = stepFunCall l st
+step' If st@State {stack=p:thenV:elseV:s, work=ws} = return $ st {stack=s, work=(Eval val):ws}
+                                      where val = if p == Symbol "#t" then thenV else elseV
 step' work st = fail $ "can't perform " ++ show work ++ " with state: " ++ show st
 
 stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = return $ st {stack=vs++s}
+stepFunCall ((Symbol "if"):[p,thenV,elseV]) st@State {work=ws, stack=s} = return $ st {work=(Eval p):If:ws, stack=thenV:elseV:s}
 stepFunCall l@(f:fs) st@State {env = e, work=ws, stack=s} = if selfEvaluating f
                                       then return $ st {stack=SList l:s}
                                       else return $ st {work=evalListWork l++ws}

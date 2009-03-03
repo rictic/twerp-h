@@ -15,6 +15,7 @@ quotedAtom = do char '"'
                 return a
 escapedChar = letter 
           <|> digit
+          <|> char '#'
           <|> (char '\\' >> anyChar)
 
 list :: Parser SNode
