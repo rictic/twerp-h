@@ -26,6 +26,10 @@ twerpTests =
     ,("(atomp 'a)", true)
     ,("(atomp '())", false)
     ,("(atomp '(a))", false)
+    ,("(;\n)", nil)
+    ,(";\n()", nil)
+    ,("();", nil)
+    ,("'(a;\nb)", SList [Symbol "a", Symbol "b"])
     ]
 
 --Trying to run these programs should give an error

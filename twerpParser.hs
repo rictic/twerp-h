@@ -20,7 +20,8 @@ escapedChar = letter
 
 list :: Parser SNode
 list = do char '('
-          l <- many (snode >>= \x -> spaces >> return x)
+          whitespace
+          l <- many (snode >>= \x -> whitespace >> return x)
           char ')'
           return (SList l)
 
@@ -28,8 +29,16 @@ quotelist = do char '\''
                s <- snode
                return $ SList [Symbol "quote", s]
 
+
 snode :: Parser SNode
-snode = atom <|> list <|> quotelist
+snode = whitespace >> (atom <|> list <|> quotelist) >>= \x -> whitespace >> return x
+
+skip p = p >> return ()
+whitespace = skip $ many $ comment <|> skip (oneOf " \t\r\n")
+comment = do char ';'
+             many (noneOf "\n")
+             ((char '\n' >> return ()) <|> eof)
+
 
 parse inputName input = case Parsec.parse snode inputName input of
     (Left err) -> fail $ show err
