@@ -21,6 +21,8 @@ twerpTests =
     ,("(null 'a)", false)
     ,("(null '(a))", false)
     ,("nil", nil)
+    ,("#t", true)
+    ,("#f", false)
     ,("(atomp 'a)", true)
     ,("(atomp '())", false)
     ,("(atomp '(a))", false)

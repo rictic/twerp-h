@@ -25,7 +25,7 @@ true = Symbol "#t"
 false = Symbol "#f"
 prim a = (a, SList [Symbol "prim", Symbol a])
 primitives = map prim ["car", "cdr", "cons", "explode", "implode", "null", "atomp"]
-builtins = [("nil",nil)] ++ primitives
+builtins = [("nil",nil),("#t",true),("#f",false)] ++ primitives
 minSt = State {env = [], work = [], stack = [], intern = builtins}
 stateToEval :: SNode -> State
 stateToEval initialExpr = minSt {work = [Eval initialExpr]}
