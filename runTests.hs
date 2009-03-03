@@ -17,7 +17,8 @@ twerpTests = [("(car car)", Symbol "prim"),
     ("(if '() 'a 'b)", Symbol "b"),
     ("(null '())", Symbol "#t"),
     ("(null 'a)", Symbol "#f"),
-    ("(null '(a))", Symbol "#f")
+    ("(null '(a))", Symbol "#f"),
+    ("nil", nil)
     ]
 
 --Trying to run these programs should give an error
