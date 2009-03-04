@@ -30,6 +30,8 @@ twerpTests =
     ,(";\n()", nil)
     ,("();", nil)
     ,("'(a;\nb)", SList [Symbol "a", Symbol "b"])
+    ,("(call/cc (lambda (k) (k '42)))", Symbol "42")
+    ,("(call/cc (lambda (k) (car (k '42))))", Symbol "42")
     ]
 
 --Trying to run these programs should give an error

@@ -44,6 +44,8 @@ step' (Apply argC) st@State {stack=s, work=w} = case func of
                               SList ((Symbol "lambda"):params:[body]) -> return $ st {work=addLambdaWork st params body ++ w, stack=reverse args}
                               SList ((Symbol "prim"):[Symbol p]) -> do r <- primCall p args 
                                                                        return $ st {stack=r:stk}
+                              SList ((Symbol "jump"):cont) -> do st' <- sNodeToState cont
+                                                                 return $ st' {stack=args++ (stack st')}
                               errval -> fail $ "tried to apply " ++ show func ++ " to args " ++ show args
                           where (argsr,stk) = splitAt (length argC) s
                                 func:args = reverse argsr
@@ -55,6 +57,8 @@ step' work st = fail $ "can't perform " ++ show work ++ " with state: " ++ show 
 
 stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = return $ st {stack=vs++s}
 stepFunCall ((Symbol "if"):[p,thenV,elseV]) st@State {work=ws, stack=s} = return $ st {work=(Eval p):If:ws, stack=thenV:elseV:s}
+stepFunCall ((Symbol "call/cc"):[f]) st@State {work=ws, stack=s} = return $ st {work=(Apply [undefined,undefined]):ws, stack=(stateToSNode st):f:s}
+stepFunCall ((SList ((Symbol "jump"):a)):f) st = fail $ show st
 stepFunCall l@(f:fs) st@State {env = e, work=ws, stack=s} = if selfEvaluating f
                                       then return $ st {stack=SList l:s}
                                       else return $ st {work=evalListWork l++ws}
@@ -82,6 +86,7 @@ primCall cmd args = fail $ "can't apply " ++ cmd ++ " to args: " ++ show args
 run :: Monad m => State -> m SNode
 run st = case run' st of
             Right ([val])  -> return val
+            Right [] -> fail "no value left on the stack"
             Right vals -> fail $ "Multiple values left on the stack: " ++ show vals
             Left err -> fail err
   
@@ -97,3 +102,28 @@ lookup :: Monad m => String -> [(String,SNode)] -> m SNode
 lookup s st = case P.lookup s st of
         Nothing -> fail $ "undefined reference to " ++ s
         (Just sym) -> return sym
+
+stateToSNode st = SList [Symbol "jump", 
+                          SList $ map unPair $ env st,
+                          SList $ map unWork $ work st,
+                          SList $ stack st,
+                          SList $ map unPair $ intern st
+                        ]
+        where unPair (str,sno) = SList [Symbol str, sno]
+              unWork (Eval sn) = SList [Symbol "eval", sn]
+              unWork (Bind s) = SList $ map Symbol ["bind", s]
+              unWork (Unbind s) = SList $ map Symbol ["unbind", s]
+              unWork (Apply sl) = SList [Symbol "apply", SList sl]
+              unWork If = Symbol "if"
+sNodeToState [SList e, SList w, SList s, SList i] = do e' <- mapM pair e
+                                                       w' <- mapM work w
+                                                       i' <- mapM pair i
+                                                       return $ State {env=e', work=w', stack=s, intern=i'}
+          where pair (SList [Symbol s, sn]) = return (s, sn)
+                pair err = fail $ "Expecting (String SNode) pair, got " ++ show err
+                work (SList [Symbol "eval", sn]) = return $ Eval sn
+                work (SList [Symbol "bind", Symbol s]) = return $ Bind s
+                work (SList [Symbol "unbind", Symbol s]) = return $ Unbind s
+                work (SList [Symbol "apply", SList sl]) = return $ Apply sl
+                work (Symbol "if") = return If
+                work err = fail $ "Expecting a work item, unable to parse " ++ show err

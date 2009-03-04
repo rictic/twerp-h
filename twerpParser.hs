@@ -15,7 +15,7 @@ doubleQuoteAtom = do char '"'
                      return a
 escapedChar = letter 
           <|> digit
-          <|> char '#'
+          <|> oneOf "#/"
           <|> (char '\\' >> anyChar)
 
 list :: Parser SNode
