@@ -58,6 +58,8 @@ step' work st = fail $ "can't perform " ++ show work ++ " with state: " ++ show 
 stepFunCall ((Symbol "quote"):vs) st@State {stack=s} = return $ st {stack=vs++s}
 stepFunCall ((Symbol "if"):[p,thenV,elseV]) st@State {work=ws, stack=s} = return $ st {work=(Eval p):If:ws, stack=thenV:elseV:s}
 stepFunCall ((Symbol "call/cc"):[f]) st@State {work=ws, stack=s} = return $ st {work=(Apply [undefined,undefined]):ws, stack=(stateToSNode st):f:s}
+stepFunCall ((Symbol "eval"):[f]) st@State {work=ws} = do st' <- step $ st {work=(Eval f):ws}
+                                                          return $ st {work=(Eval (head (stack st'))):(work st')}
 stepFunCall ((SList ((Symbol "jump"):a)):f) st = fail $ show st
 stepFunCall l@(f:fs) st@State {env = e, work=ws, stack=s} = if selfEvaluating f
                                       then return $ st {stack=SList l:s}

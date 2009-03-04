@@ -36,6 +36,9 @@ twerpTests =
     ,("(eq 'a 'b)", false)
     ,("(eq 'a ())", false)
     ,("(eq () ())", false)
+    ,("((lambda (a) (eval 'a)) 'foo)", Symbol "foo")
+    ,("((lambda (a) (eval '(call/cc (lambda (k) (k '42))))) 'foo)", Symbol "42")
+    ,("((lambda (a) (eval 'a)) (call/cc (lambda (k) (k '42)))))", Symbol "42")
     ]
 
 --Trying to run these programs should give an error
