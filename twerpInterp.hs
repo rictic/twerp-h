@@ -24,7 +24,7 @@ nil = SList []
 true = Symbol "#t"
 false = Symbol "#f"
 prim a = (a, SList [Symbol "prim", Symbol a])
-primitives = map prim ["car", "cdr", "cons", "explode", "implode", "null", "atomp"]
+primitives = map prim ["car", "cdr", "cons", "explode", "implode", "null", "atomp", "eq"]
 builtins = [("nil",nil),("#t",true),("#f",false)] ++ primitives
 minSt = State {env = [], work = [], stack = [], intern = builtins}
 stateToEval :: SNode -> State
@@ -81,6 +81,8 @@ primCall "implode" [SList symbols] = do strs <- mapM unsymbol symbols
 primCall "null" [v] = return $ if v == nil then true else false
 primCall "atomp" [Symbol _] = return true
 primCall "atomp" [_] = return false
+primCall "eq" [Symbol a, Symbol b] = return $ if a == b then true else false
+primCall "eq" [_, _] = return false
 primCall cmd args = fail $ "can't apply " ++ cmd ++ " to args: " ++ show args
 
 run :: Monad m => State -> m SNode
