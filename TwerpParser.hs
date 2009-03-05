@@ -2,12 +2,11 @@
 module TwerpParser
   where
 import TwerpInterp
-import Control.Applicative hiding ((<|>), many)
 import Text.ParserCombinators.Parsec hiding (parse)
 import qualified Text.ParserCombinators.Parsec as Parsec
 
 atom :: Parser SNode
-atom = Symbol <$> (doubleQuoteAtom <|> many1 escapedChar)
+atom = fmap Symbol (doubleQuoteAtom <|> many1 escapedChar)
 
 doubleQuoteAtom = do char '"'
                      a <- many (noneOf "\"")
